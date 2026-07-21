@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Vengo - Fashion Kids</title>
+  <meta name="description" content="نظام إدارة Vengo - Fashion Kids - إدارة الموديلات والأوردرات والمخزون">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3B82F6">
+  <link rel="icon" href="icon.jpg" type="image/jpeg">
+  <link rel="apple-touch-icon" href="icon.jpg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ═══════════════════════════════════════════
+       LOGIN SCREEN
+  ═══════════════════════════════════════════ -->
+  <div id="screen-login" class="screen">
+    <div class="login-bg">
+      <div class="login-particles"></div>
+      <div class="login-card">
+        <div class="login-logo">
+          <div class="logo-emblem">V</div>
+          <h1 class="logo-wordmark">VENGO</h1>
+          <p class="logo-tagline">Fashion Kids</p>
+        </div>
+        <form id="login-form" class="login-form" autocomplete="off">
+          <div class="form-group">
+            <label for="login-username">اسم المستخدم</label>
+            <div class="input-wrap">
+              <input type="text" id="login-username" placeholder="أدخل اسم المستخدم" autocomplete="username">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="login-password">كلمة المرور</label>
+            <div class="input-wrap">
+              <input type="password" id="login-password" placeholder="أدخل كلمة المرور" autocomplete="current-password">
+              <button type="button" id="toggle-pass" class="toggle-pass-btn" tabindex="-1">
+                <svg id="eye-show" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                <svg id="eye-hide" class="hidden" viewBox="0 0 24 24"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="login-error" class="error-msg hidden">اسم المستخدم أو كلمة المرور غير صحيحة</div>
+          <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+            <span>تسجيل الدخول</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN APP SHELL
+  ═══════════════════════════════════════════ -->
+  <div id="app-shell" class="hidden">
+
+    <!-- HEADER -->
+    <header id="app-header">
+      <div class="header-start">
+        <button id="sidebar-toggle" class="icon-btn" aria-label="القائمة">
+          <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div class="header-brand">
+          <span class="brand-v">V</span>
+          <span class="brand-name">VENGO</span>
+        </div>
+      </div>
+      <div class="header-end">
+        <div id="network-status" class="network-status online" title="حالة الإنترنت">
+          <span class="network-dot"></span>
+          <span class="network-text">متصل</span>
+        </div>
+        <div class="header-user-info">
+          <span id="header-season-badge" class="role-badge" style="background:var(--primary); color:white; margin-inline-end: 0.5rem; cursor: pointer;" onclick="App.navigate('seasons')" title="إدارة المواسم">الموسم</span>
+          <span id="header-username" class="header-uname"></span>
+          <span id="header-role-badge" class="role-badge"></span>
+        </div>
+        <button id="logout-btn" class="icon-btn" aria-label="تسجيل الخروج" title="تسجيل الخروج">
+          <svg viewBox="0 0 24 24"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- APP BODY (sidebar + main) -->
+    <div id="app-body">
+
+      <!-- SIDEBAR -->
+      <aside id="sidebar" class="sidebar">
+        <nav class="sidebar-nav">
+          <a href="#" class="nav-item" data-page="dashboard" data-roles="admin,sales,warehouse">
+            <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+            <span>الرئيسية</span>
+          </a>
+          <a href="#" class="nav-item" data-page="models" data-roles="admin">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+            <span>الموديلات</span>
+          </a>
+          <a href="#" class="nav-item" data-page="orders" data-roles="admin,sales">
+            <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0023.46 5H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+            <span>الأوردرات</span>
+          </a>
+          <a href="#" class="nav-item" data-page="inventory" data-roles="admin,warehouse">
+            <svg viewBox="0 0 24 24"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+            <span>المخزون</span>
+          </a>
+          <a href="#" class="nav-item" data-page="users" data-roles="admin">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span>المستخدمون</span>
+          </a>
+          <a href="#" class="nav-item" data-page="colors" data-roles="admin">
+            <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            <span>الألوان</span>
+          </a>
+
+          <a href="#" class="nav-item" data-page="seasons" data-roles="admin">
+            <svg viewBox="0 0 24 24"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7v-5z"/></svg>
+            <span>إدارة المواسم</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="sidebar-version">v1.0.0</div>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT AREA -->
+      <main id="main-content">
+
+        <!-- ─────────── DASHBOARD ─────────── -->
+        <div id="page-dashboard" class="page">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">لوحة التحكم</h1>
+              <p id="dashboard-date" class="page-subtitle"></p>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card stat-blue">
+              <div class="stat-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              </div>
+              <div class="stat-body">
+                <span id="stat-models" class="stat-value">0</span>
+                <span class="stat-label">إجمالي الموديلات</span>
+              </div>
+            </div>
+            <div class="stat-card stat-gold">
+              <div class="stat-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+              </div>
+              <div class="stat-body">
+                <span id="stat-orders-today" class="stat-value">0</span>
+                <span class="stat-label">أوردرات اليوم</span>
+              </div>
+            </div>
+            <div class="stat-card stat-green">
+              <div class="stat-icon">
+                <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0023.46 5H5.21l-.94-2H1z"/></svg>
+              </div>
+              <div class="stat-body">
+                <span id="stat-total-orders" class="stat-value">0</span>
+                <span class="stat-label">إجمالي الأوردرات</span>
+              </div>
+            </div>
+            <div class="stat-card stat-red">
+              <div class="stat-icon">
+                <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+              </div>
+              <div class="stat-body">
+                <span id="stat-low-stock" class="stat-value">0</span>
+                <span class="stat-label">موديلات منخفضة</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="low-stock-alert" class="alert-section hidden">
+            <div class="alert-header">
+              <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+              <span>تنبيه: ألوان تحتاج انتباه (أقل من 6 قطع)</span>
+            </div>
+            <div id="low-stock-list" class="low-stock-chips"></div>
+          </div>
+
+          <div class="dashboard-section">
+            <div class="section-header">
+              <h2>آخر الأوردرات</h2>
+              <button class="btn btn-ghost btn-sm" onclick="App.navigate('orders')">عرض الكل ←</button>
+            </div>
+            <div id="recent-orders-list"></div>
+            <div id="no-recent-orders" class="empty-mini hidden">لا توجد أوردرات بعد</div>
+          </div>
+        </div>
+
+        <!-- ─────────── MODELS LIST ─────────── -->
+        <div id="page-models" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">الموديلات</h1>
+              <p class="page-subtitle" id="models-count-label"></p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-model">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <span>إضافة موديل</span>
+            </button>
+          </div>
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="models-search" placeholder="ابحث عن موديل...">
+          </div>
+          <div id="models-grid" class="models-grid"></div>
+          <div id="models-empty" class="empty-state hidden">
+            <div class="empty-icon">📦</div>
+            <h3>لا توجد موديلات بعد</h3>
+            <p>ابدأ بإضافة موديلاتك</p>
+            <button class="btn btn-primary" onclick="App.navigate('add-model')">+ إضافة أول موديل</button>
+          </div>
+        </div>
+
+        <!-- ─────────── ADD / EDIT MODEL ─────────── -->
+        <div id="page-add-model" class="page hidden">
+          <div class="page-header">
+            <button class="back-btn" id="back-from-model">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              رجوع
+            </button>
+            <h1 class="page-title" id="add-model-title">إضافة موديل جديد</h1>
+          </div>
+          <div class="form-card">
+            <form id="model-form">
+              <input type="hidden" id="model-edit-id">
+              <div class="form-row">
+                <div class="form-group flex-2">
+                  <label>اسم الموديل <span class="req">*</span></label>
+                  <input type="text" id="model-name" placeholder="مثال: موديل صيف 2026 - A" required>
+                </div>
+                <div class="form-group flex-1">
+                  <label>السعر (ج.م) <span class="req">*</span></label>
+                  <input type="number" id="model-price" placeholder="150" min="0" required>
+                </div>
+                <div class="form-group flex-1">
+                  <label>إجمالي القطع <span class="req">*</span></label>
+                  <input type="number" id="model-total" placeholder="48" min="1" value="48" required>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="colors-section">
+                <div class="colors-section-header">
+                  <h3>الألوان وأعدادها</h3>
+                  <button type="button" class="btn btn-outline btn-sm" id="add-color-btn">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    إضافة لون
+                  </button>
+                </div>
+                <div id="colors-list" class="colors-list"></div>
+                <div id="colors-empty-hint" class="colors-hint">
+                  اضغط "إضافة لون" لإضافة ألوان الموديل
+                </div>
+                <div id="colors-total-check" class="colors-total hidden"></div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn btn-ghost" id="cancel-model-btn">إلغاء</button>
+                <button type="submit" class="btn btn-primary" id="save-model-btn">
+                  <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                  حفظ الموديل
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- ─────────── BULK ADD MODELS ─────────── -->
+        <div id="page-bulk-models" class="page hidden">
+          <div class="page-header">
+            <button class="back-btn" onclick="App.navigate('models')">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              رجوع
+            </button>
+            <h1 class="page-title">إدخال سريع للموديلات (جدول)</h1>
+            <button class="btn btn-primary" id="btn-save-bulk">
+              حفظ الكل
+            </button>
+          </div>
+          <div class="bulk-container" style="overflow-x: auto;">
+            <table class="print-items-table" style="min-width: 800px; margin-bottom: 1rem;">
+              <thead id="bulk-thead">
+                <!-- Dynamically filled with Colors -->
+              </thead>
+              <tbody id="bulk-tbody">
+                <!-- Rows -->
+              </tbody>
+            </table>
+            <button class="btn btn-outline" id="btn-bulk-add-row" style="margin-bottom: 2rem;">+ إضافة صف</button>
+          </div>
+        </div>
+
+        <!-- ─────────── ORDERS LIST ─────────── -->
+        <div id="page-orders" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">الأوردرات</h1>
+              <p class="page-subtitle" id="orders-count-label"></p>
+            </div>
+            <button class="btn btn-primary" id="btn-new-order">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <span>أوردر جديد</span>
+            </button>
+          </div>
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="orders-search" placeholder="ابحث بالتاجر أو التاريخ...">
+          </div>
+          <div id="orders-list" class="orders-list"></div>
+          <div id="orders-empty" class="empty-state hidden">
+            <div class="empty-icon">📋</div>
+            <h3>لا توجد أوردرات</h3>
+            <p>ابدأ بإنشاء أول أوردر</p>
+            <button class="btn btn-primary" id="btn-new-order-empty">+ أوردر جديد</button>
+          </div>
+        </div>
+
+        <!-- ─────────── CREATE ORDER ─────────── -->
+        <div id="page-create-order" class="page hidden">
+          <div class="page-header">
+            <button class="back-btn" id="back-from-order">
+              <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+              رجوع
+            </button>
+            <h1 class="page-title">أوردر جديد</h1>
+          </div>
+
+          <!-- Steps -->
+          <div class="steps-bar">
+            <div class="step-item active" id="step-indicator-1">
+              <div class="step-circle">1</div>
+              <span>الموديلات</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-item" id="step-indicator-2">
+              <div class="step-circle">2</div>
+              <span>بيانات التاجر</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-item" id="step-indicator-3">
+              <div class="step-circle">3</div>
+              <span>مراجعة</span>
+            </div>
+          </div>
+
+          <!-- Step 1: Models Selection -->
+          <div id="order-step-1" class="order-step">
+            <div class="basket-bar">
+              <div class="basket-info">
+                <svg viewBox="0 0 24 24"><path d="M17.21 9l-4.38-6.56c-.19-.28-.51-.42-.83-.42-.32 0-.64.14-.83.43L6.79 9H2c-.55 0-1 .45-1 1 0 .09.01.18.04.27l2.54 9.27c.23.84 1 1.46 1.92 1.46h13c.92 0 1.69-.62 1.93-1.46l2.54-9.27L22 10c0-.55-.45-1-1-1h-3.79zM9 9l3-4.4L15 9H9zm3 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                <span>السلة: <strong id="basket-items-count">0</strong> صنف | <strong id="basket-total-qty">0</strong> قطعة</span>
+              </div>
+              <button class="btn btn-outline btn-sm" id="clear-basket-btn">مسح الكل</button>
+            </div>
+            
+            <div class="qty-step-selector">
+              <span class="qty-step-label">مضاعفات الإضافة:</span>
+              <button class="step-btn active" onclick="Orders.setQtyStep(1)">1</button>
+              <button class="step-btn" onclick="Orders.setQtyStep(4)">4</button>
+              <button class="step-btn" onclick="Orders.setQtyStep(5)">5</button>
+            </div>
+
+            <div class="search-bar">
+              <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <input type="text" id="order-search-model" placeholder="ابحث عن موديل...">
+            </div>
+            <div id="order-models-container" class="order-models-container"></div>
+            <div class="order-step-nav">
+              <button class="btn btn-primary" id="order-next-1" style="margin-right:auto">
+                التالي: بيانات التاجر
+                <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step 2: Customer -->
+          <div id="order-step-2" class="order-step hidden">
+            <div class="form-card">
+              <h2 class="form-card-title">بيانات التاجر</h2>
+              <div class="form-group">
+                <label>اسم التاجر <span class="req">*</span></label>
+                <input type="text" id="customer-name" list="customers-list" placeholder="الاسم الكامل" autocomplete="off">
+                <datalist id="customers-list"></datalist>
+              </div>
+              <div class="form-group">
+                <label>العنوان</label>
+                <input type="text" id="customer-address" placeholder="المدينة / الشارع">
+              </div>
+              <div class="form-group">
+                <label>رقم الموبايل <span class="req">*</span></label>
+                <input type="tel" id="customer-phone" placeholder="01012345678">
+              </div>
+              <div class="order-step-nav">
+                <button class="btn btn-ghost" id="order-back-1">
+                  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                  السابق
+                </button>
+                <button class="btn btn-primary" id="order-next-2">
+                  التالي: مراجعة الأوردر
+                  <svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3: Review -->
+          <div id="order-step-3" class="order-step hidden">
+            <div class="form-card">
+              <h2 class="form-card-title">مراجعة الأوردر</h2>
+              <div id="review-customer-card" class="review-customer-card"></div>
+              <div class="divider"></div>
+              <div id="review-items-list" class="review-items-list"></div>
+              <div id="review-totals" class="review-totals"></div>
+              <div class="order-step-nav">
+                <button class="btn btn-ghost" id="order-back-2">
+                  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                  تعديل
+                </button>
+                <button class="btn btn-primary" id="order-confirm-btn">
+                  <svg viewBox="0 0 24 24"><path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/></svg>
+                  تأكيد وطباعة
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────── INVENTORY ─────────── -->
+        <div id="page-inventory" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">تقارير المخزون</h1>
+              <p class="page-subtitle">الكميات المتبقية من كل موديل ولون</p>
+            </div>
+            <button class="btn btn-ghost" id="export-inventory-btn">
+              <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              تصدير
+            </button>
+          </div>
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="inventory-search" placeholder="ابحث عن موديل...">
+          </div>
+          <div id="inventory-content" class="inventory-content"></div>
+          <div id="inventory-empty" class="empty-state hidden">
+            <div class="empty-icon">📊</div>
+            <h3>لا توجد بيانات</h3>
+            <p>أضف موديلات أولاً لعرض المخزون</p>
+          </div>
+        </div>
+
+        <!-- ─────────── USERS ─────────── -->
+        <div id="page-users" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">إدارة المستخدمين</h1>
+              <p class="page-subtitle" id="users-count-label"></p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-user">
+              <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+              <span>مستخدم جديد</span>
+            </button>
+          </div>
+          <div id="users-grid" class="users-grid"></div>
+        </div>
+
+        <!-- ─────────── COLORS ─────────── -->
+        <div id="page-colors" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">إدارة الألوان</h1>
+              <p class="page-subtitle" id="colors-count-label"></p>
+            </div>
+            <button class="btn btn-primary" id="btn-add-color">
+              <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+              <span>لون جديد</span>
+            </button>
+          </div>
+          <div id="colors-grid" class="colors-grid"></div>
+        </div>
+
+
+
+        <!-- ─────────── SEASONS PAGE ─────────── -->
+        <div id="page-seasons" class="page hidden">
+          <div class="page-header">
+            <div>
+              <h1 class="page-title">إدارة المواسم</h1>
+              <p class="page-subtitle">أضف مواسم جديدة أو احذف المواسم القديمة</p>
+            </div>
+          </div>
+          
+          <div class="form-card" style="margin-bottom: 1.5rem; display:flex; gap:1rem; flex-wrap:wrap;">
+            <input type="text" id="new-season-input-page" placeholder="اسم الموسم الجديد (مثال: صيف 2026)" style="flex:1;">
+            <button class="btn btn-primary" onclick="Seasons.createNewSeason()">+ بدء موسم جديد</button>
+          </div>
+
+          <div id="seasons-grid" class="users-grid"></div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- BOTTOM NAV (mobile) -->
+    <nav id="bottom-nav" class="bottom-nav">
+      <a href="#" class="bnav-item" data-page="dashboard" data-roles="admin,sales,warehouse">
+        <svg viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+        <span>الرئيسية</span>
+      </a>
+      <a href="#" class="bnav-item" data-page="models" data-roles="admin">
+        <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <span>الموديلات</span>
+      </a>
+      <a href="#" class="bnav-item bnav-center-btn" data-page="create-order" data-roles="admin,sales">
+        <div class="bnav-fab">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </div>
+        <span>أوردر</span>
+      </a>
+      <a href="#" class="bnav-item" data-page="inventory" data-roles="admin,warehouse">
+        <svg viewBox="0 0 24 24"><path d="M20 3H4v10c0 2.21 1.79 4 4 4h6c2.21 0 4-1.79 4-4v-3h2c1.11 0 2-.89 2-2V5c0-1.11-.89-2-2-2zm0 5h-2V5h2v3zM4 19h16v2H4z"/></svg>
+        <span>المخزون</span>
+      </a>
+      <a href="#" class="bnav-item" data-page="orders" data-roles="admin,sales">
+        <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96C5 16.1 6.9 18 9 18h12v-2H9.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63H19c.75 0 1.41-.41 1.75-1.03l3.58-6.49A1 1 0 0023.46 5H5.21l-.94-2H1z"/></svg>
+        <span>الأوردرات</span>
+      </a>
+    </nav>
+
+  </div><!-- end app-shell -->
+
+  <!-- ═══════════════════════════════════════════
+       MODALS
+  ═══════════════════════════════════════════ -->
+
+  <!-- User Modal -->
+  <div id="modal-user" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="user"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="user-modal-title">إضافة مستخدم</h3>
+        <button class="modal-close-btn" data-close="user">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <form id="user-form" class="modal-body">
+        <input type="hidden" id="user-edit-id">
+        <div class="form-group">
+          <label>الاسم الكامل <span class="req">*</span></label>
+          <input type="text" id="user-fullname" placeholder="اسم المستخدم بالكامل" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>اسم الدخول <span class="req">*</span></label>
+            <input type="text" id="user-username" placeholder="username" required>
+          </div>
+          <div class="form-group flex-1">
+            <label>كلمة المرور <span class="req">*</span></label>
+            <input type="password" id="user-password" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>الدور <span class="req">*</span></label>
+          <select id="user-role" required>
+            <option value="">-- اختر الدور --</option>
+            <option value="admin">🔐 مدير (Admin) - صلاحيات كاملة</option>
+            <option value="sales">💼 سيلز (Sales) - الأوردرات فقط</option>
+            <option value="warehouse">📦 مخزن (Warehouse) - التقارير فقط</option>
+          </select>
+        </div>
+      </form>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="user">إلغاء</button>
+        <button class="btn btn-primary" id="save-user-btn">حفظ المستخدم</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOMER MODAL -->
+  <div id="modal-customer" class="modal hidden">
+    <div class="modal-backdrop" onclick="Modal.close('customer')"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="customer-modal-title">إضافة تاجر جديد</h2>
+        <button class="icon-btn" onclick="Modal.close('customer')"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="customer-edit-id">
+        <div class="form-group">
+          <label>اسم التاجر <span class="req">*</span></label>
+          <input type="text" id="customer-form-name" placeholder="الاسم الكامل">
+        </div>
+        <div class="form-group">
+          <label>رقم الموبايل <span class="req">*</span></label>
+          <input type="tel" id="customer-form-phone" placeholder="01012345678">
+        </div>
+        <div class="form-group">
+          <label>العنوان</label>
+          <input type="text" id="customer-form-address" placeholder="المحافظة / الشارع">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="Modal.close('customer')">إلغاء</button>
+        <button class="btn btn-primary" onclick="Customers.save()">حفظ البيانات</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Details Modal -->
+  <div id="modal-order-detail" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="order-detail"></div>
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 id="order-detail-title">تفاصيل الأوردر</h3>
+        <button class="modal-close-btn" data-close="order-detail">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="order-detail-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="order-detail">إغلاق</button>
+        <button class="btn btn-outline" id="reprint-order-btn">
+          <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+          طباعة مرة أخرى
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="modal-confirm" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" data-close="confirm"></div>
+    <div class="modal-box modal-sm">
+      <div class="modal-header">
+        <h3 id="confirm-title">تأكيد</h3>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message" class="confirm-text"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="confirm">إلغاء</button>
+        <button class="btn btn-danger" id="confirm-ok-btn">تأكيد</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Force Password Change Modal -->
+  <div id="modal-force-password" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">تغيير كلمة المرور الافتراضية</h3>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 1rem; color: #ef4444; font-size: 0.9rem;">يجب تغيير كلمة المرور الافتراضية لأسباب أمنية قبل المتابعة.</p>
+        <div class="form-group">
+          <label>كلمة المرور الجديدة</label>
+          <input type="password" id="force-new-password" placeholder="أدخل كلمة المرور الجديدة" minlength="6">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-force-password-save">حفظ ومتابعة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Color Modal -->
+  <div id="modal-color" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title" id="color-modal-title">إضافة لون</h3>
+        <button class="icon-btn close-modal" data-modal="color">
+          <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form id="color-form">
+          <input type="hidden" id="color-id">
+          <div class="form-group">
+            <label>اسم اللون</label>
+            <input type="text" id="color-name" required placeholder="مثال: أحمر غامق">
+          </div>
+          <div class="form-group">
+            <label>اختر درجة اللون</label>
+            <input type="color" id="color-hex" value="#000000" style="width: 100%; height: 50px; cursor: pointer;">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btn-save-color">حفظ اللون</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SEASONS -->
+  <div id="modal-seasons" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">إدارة المواسم</h3>
+        <button class="modal-close" onclick="Modal.close('seasons')">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>بدء موسم جديد (مثال: شتاء 2026)</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="new-season-input" placeholder="اسم الموسم الجديد..." style="flex: 1;">
+            <button class="btn btn-primary" onclick="Config.createNewSeason()">بدء الموسم</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">ملاحظة: بدء موسم جديد سيبدأ بصفر بيانات لتتمكن من العمل من جديد، وسيتم حفظ بياناتك القديمة في مواسمها.</p>
+        </div>
+        <div class="divider"></div>
+        <h4>المواسم السابقة (اختر لعرض بياناته)</h4>
+        <div id="seasons-list-container" style="display:flex; flex-direction:column; gap:0.5rem; margin-top: 0.5rem; max-height: 200px; overflow-y: auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ORDER SUCCESS -->
+  <div id="modal-order-success" class="modal hidden">
+    <div class="modal-content" style="text-align: center; max-width: 400px;">
+      <div style="font-size: 4rem; color: var(--success); margin-bottom: 1rem;">
+        <svg viewBox="0 0 24 24" style="width: 80px; height: 80px; fill: currentColor; margin: 0 auto;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+      </div>
+      <h2 style="margin-bottom: 0.5rem; color: var(--text-primary);">تم تسجيل الأوردر بنجاح!</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">الأوردر محفوظ ومزامن في قاعدة البيانات.</p>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <button class="btn btn-outline" onclick="Modal.close('order-success'); App.navigate('orders');">رجوع للأوردرات</button>
+        <button class="btn btn-primary" id="btn-success-print">طباعة الفاتورة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- PRINT AREA -->
+  <div id="print-area" class="print-area">
+    <div class="print-header-row">
+      <div class="print-brand">
+        <div class="print-brand-v">V</div>
+        <div class="print-brand-text">
+          <strong>VENGO</strong>
+          <small>Fashion Kids</small>
+        </div>
+      </div>
+      <div class="print-order-meta">
+        <table>
+          <tr><td>رقم الأوردر:</td><td><strong id="print-order-num"></strong></td></tr>
+          <tr><td>التاريخ:</td><td><strong id="print-order-date"></strong></td></tr>
+          <tr><td>الموظف:</td><td><strong id="print-order-staff"></strong></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="print-divider"></div>
+    <div class="print-customer-section">
+      <h3>بيانات التاجر</h3>
+      <div class="print-customer-grid">
+        <div><span>الاسم:</span> <strong id="print-cust-name"></strong></div>
+        <div><span>الموبايل:</span> <strong id="print-cust-phone"></strong></div>
+        <div><span>العنوان:</span> <strong id="print-cust-address"></strong></div>
+      </div>
+    </div>
+    <div class="print-divider"></div>
+    <table class="print-items-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الموديل</th>
+          <th>اللون</th>
+          <th>الكمية (قطعة)</th>
+          <th>السعر</th>
+          <th>الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody id="print-items-body"></tbody>
+      <tfoot>
+        <tr class="print-total-row">
+          <td colspan="3"><strong>إجمالي القطع</strong></td>
+          <td><strong id="print-total-pieces"></strong></td>
+          <td><strong>المبلغ الكلي</strong></td>
+          <td><strong id="print-total-price"></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+    <div class="print-footer-row">
+      <div class="print-sig-box">
+        <p>توقيع التاجر</p>
+        <div class="print-sig-line"></div>
+      </div>
+      <div class="print-sig-box">
+        <p>توقيع الموظف</p>
+        <div class="print-sig-line"></div>
+      </div>
+    </div>
+    <div class="print-watermark">Vengo System - Fashion Kids</div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(registration => console.log('SW registered'))
+        .catch(err => console.log('SW failed', err));
+    });
+  }
+</script>
+</body>
+</html>
