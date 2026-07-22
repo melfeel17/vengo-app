@@ -818,7 +818,19 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js')
-        .then(registration => console.log('SW registered'))
+        .then(reg => {
+          reg.update();
+          reg.onupdatefound = () => {
+            const worker = reg.installing;
+            if (worker) {
+              worker.onstatechange = () => {
+                if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                  window.location.reload();
+                }
+              };
+            }
+          };
+        })
         .catch(err => console.log('SW failed', err));
     });
   }
