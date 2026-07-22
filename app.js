@@ -438,6 +438,17 @@ const App = {
 
     Auth.init();
 
+    // Instant launch: restore cached session immediately
+    const cachedUser = DB.getOne(KEYS.SESSION);
+    if (cachedUser) {
+      Auth.currentUser = cachedUser;
+      this.showShell();
+      if (!this.currentPage) this.navigate(Auth.defaultPage());
+      if (typeof Sync !== 'undefined') {
+        Sync.init();
+      }
+    }
+
     this.bindLoginForm();
     this.bindModalBackdrops();
 
@@ -463,32 +474,52 @@ const App = {
       firebase.auth().onAuthStateChanged(async user => {
         if (user) {
           try {
-            const doc = await fireDB.collection('vengo_users').doc(user.uid).get();
-            if (doc.exists) {
-              const userData = doc.data();
-              Auth.currentUser = userData;
-              if (typeof Sync !== 'undefined') {
-                Sync.stop(); // Prevent duplicate listeners
-                Sync.init();
-              }
+            // Restore from local cache first for instant UX
+            const localUsers = DB.get(KEYS.USERS);
+            const cached = localUsers.find(u => u.id === user.uid) || DB.getOne(KEYS.SESSION);
+            if (cached) {
+              Auth.currentUser = cached;
+              DB.setOne(KEYS.SESSION, cached);
               this.showShell();
               if (!this.currentPage) this.navigate(Auth.defaultPage());
-            } else {
-              // User deleted or role revoked
-              await Auth.logout();
-              this.showLogin();
+            }
+
+            // Sync/Verify from Firestore in background
+            if (fireDB) {
+              const doc = await fireDB.collection('vengo_users').doc(user.uid).get();
+              if (doc.exists) {
+                const userData = doc.data();
+                Auth.currentUser = userData;
+                DB.setOne(KEYS.SESSION, userData);
+                if (typeof Sync !== 'undefined') {
+                  Sync.stop(); // Prevent duplicate listeners
+                  Sync.init();
+                }
+                this.showShell();
+                if (!this.currentPage) this.navigate(Auth.defaultPage());
+              } else {
+                // User deleted or role revoked
+                await Auth.logout();
+                this.showLogin();
+              }
             }
           } catch (e) {
             console.error("Error fetching user data", e);
-            this.showLogin();
+            // If offline or network error, keep using cached session
+            if (!DB.getOne(KEYS.SESSION)) {
+              this.showLogin();
+            }
           }
         } else {
           Auth.currentUser = null;
+          DB.remove(KEYS.SESSION);
           this.showLogin();
         }
       });
     } else {
-      this.showLogin();
+      if (!DB.getOne(KEYS.SESSION)) {
+        this.showLogin();
+      }
     }
   },
 
@@ -1917,18 +1948,24 @@ const Users = {
       } else {
         const email = `${username}@vengo-wear.com`;
         
-        // Use a secondary app to create the user without logging out the admin
-        const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
-        const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
-        const uid = userCredential.user.uid;
+        // Use a secondary app safely to create the user without logging out the admin
+        let secondaryApp = firebase.apps?.find(app => app.name === "Secondary");
+        if (!secondaryApp) {
+          secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+        }
         
-        await secondaryApp.auth().signOut();
-        await secondaryApp.delete();
+        try {
+          const userCredential = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+          const uid = userCredential.user.uid;
+          await secondaryApp.auth().signOut();
 
-        const newUser = { id: uid, name, username, email, role, createdAt: Utils.todayISO() };
-        users.push(newUser);
-        await Sync.addOrUpdate(KEYS.USERS, uid, newUser);
-        Toast.success('تم إضافة المستخدم بنجاح');
+          const newUser = { id: uid, name, username, email, role, createdAt: Utils.todayISO() };
+          users.push(newUser);
+          await Sync.addOrUpdate(KEYS.USERS, uid, newUser);
+          Toast.success('تم إضافة المستخدم بنجاح');
+        } finally {
+          await secondaryApp.delete().catch(() => {});
+        }
       }
 
       DB.set(KEYS.USERS, users);
@@ -1936,7 +1973,13 @@ const Users = {
       this.render();
     } catch (err) {
       console.error(err);
-      Toast.error('حدث خطأ أثناء الحفظ: ' + err.message);
+      let msg = err.message;
+      if (err.code === 'auth/email-already-in-use') {
+        msg = 'اسم المستخدم هذا مسجل بالفعل في نظام الحسابات (Firebase Auth)! يرجى اختيار اسم مستخدم آخر، أو حذف الحساب القديم من لوحة تحكم Firebase Authentication.';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'كلمة المرور ضعيفة (يجب أن تكون 6 أحرف أو أكثر).';
+      }
+      Toast.error('حدث خطأ: ' + msg);
     } finally {
       if(btn) { btn.disabled = false; btn.textContent = 'حفظ'; }
     }
