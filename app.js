@@ -1959,7 +1959,7 @@ const Users = {
           const uid = userCredential.user.uid;
           await secondaryApp.auth().signOut();
 
-          const newUser = { id: uid, name, username, email, role, createdAt: Utils.todayISO() };
+          const newUser = { id: uid, uid: uid, name, username, email, role, createdAt: Utils.todayISO() };
           users.push(newUser);
           await Sync.addOrUpdate(KEYS.USERS, uid, newUser);
           Toast.success('تم إضافة المستخدم بنجاح');
