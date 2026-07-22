@@ -69,16 +69,16 @@ const Sync = {
         // Trigger UI updates based on current page
         const p = App.currentPage;
         if (localKey === KEYS.USERS && p === 'users' && typeof Users !== 'undefined') Users.render();
-        if (localKey === KEYS.COLORS && p === 'colors' && typeof Colors !== 'undefined') Colors.renderGrid();
+        if (localKey === KEYS.COLORS && p === 'colors' && typeof Colors !== 'undefined') Colors.render();
         if (localKey === KEYS.CUSTOMERS && p === 'customers' && typeof Customers !== 'undefined') Customers.render();
         if (localKey === KEYS.MODELS) {
-          if (p === 'models' && typeof Models !== 'undefined') Models.renderGrid();
+          if (p === 'models' && typeof Models !== 'undefined') Models.render();
           if (p === 'inventory' && typeof Inventory !== 'undefined') Inventory.render();
           if (p === 'create-order' && typeof Orders !== 'undefined') Orders.renderOrderModels('');
           if (p === 'dashboard' && typeof Dashboard !== 'undefined') Dashboard.render();
         }
         if (localKey === KEYS.ORDERS) {
-          if (p === 'orders' && typeof Orders !== 'undefined') Orders.renderList();
+          if (p === 'orders' && typeof Orders !== 'undefined') Orders.render();
           if (p === 'dashboard' && typeof Dashboard !== 'undefined') Dashboard.render();
         }
       });
@@ -114,8 +114,11 @@ const Sync = {
       fireDB.collection(fireCol).doc(id).set({ ...data, updatedAt: new Date().toISOString() }, { merge: true })
         .catch(err => {
           console.error("Sync addOrUpdate Error:", err);
-          Toast.error("فشل الحفظ في السحابة (جاري التراجع). تأكد من صلاحياتك أو اتصالك.");
-          setTimeout(() => location.reload(), 2000);
+          // لا نعيد التحميل تلقائياً — نعرض رسالة واضحة للمستخدم
+          const isPermission = err.code === 'permission-denied';
+          Toast.error(isPermission
+            ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء. تواصل مع المدير.'
+            : 'فشل الحفظ في السحابة. تحقق من اتصالك بالإنترنت وأعد المحاولة.');
         });
     }
   },
@@ -134,8 +137,10 @@ const Sync = {
       fireDB.collection(fireCol).doc(id).delete()
         .catch(err => {
           console.error("Sync delete Error:", err);
-          Toast.error("فشل الحذف من السحابة (جاري التراجع). تأكد من صلاحياتك.");
-          setTimeout(() => location.reload(), 2000);
+          const isPermission = err.code === 'permission-denied';
+          Toast.error(isPermission
+            ? 'ليس لديك صلاحية لحذف هذا العنصر. تواصل مع المدير.'
+            : 'فشل الحذف من السحابة. تحقق من اتصالك بالإنترنت وأعد المحاولة.');
         });
     }
   },
@@ -163,11 +168,25 @@ const Sync = {
       for (const modelId of Object.keys(modelsToUpdate)) {
         const ref = fireDB.collection('vengo_models').doc(modelId);
         const doc = await transaction.get(ref);
-        if (!doc.exists) throw new Error(`Model ${modelId} not found in database!`);
+        if (!doc.exists) throw new Error(`الموديل غير موجود في قاعدة البيانات!`);
         modelDocs[modelId] = { ref, data: doc.data() };
       }
 
-      // 2. Perform deductions
+      // 2. ✅ تحقق من توفر الكمية قبل الخصم (CRITICAL FIX)
+      for (const modelId of Object.keys(modelsToUpdate)) {
+        const model = modelDocs[modelId].data;
+        const itemsForModel = modelsToUpdate[modelId];
+
+        for (const item of itemsForModel) {
+          const color = model.colors.find(c => c.id === item.colorId);
+          if (!color) throw new Error(`اللون غير موجود في الموديل!`);
+          if (color.quantity < item.quantity) {
+            throw new Error(`عذراً! الكمية المتاحة من لون "${item.colorName}" في موديل "${item.modelName}" هي ${color.quantity} قطعة فقط، وطلبت منها ${item.quantity} قطعة. يرجى تعديل الكمية.`);
+          }
+        }
+      }
+
+      // 3. خصم الكميات بعد التحقق
       for (const modelId of Object.keys(modelsToUpdate)) {
         const model = modelDocs[modelId].data;
         const itemsForModel = modelsToUpdate[modelId];
@@ -175,14 +194,14 @@ const Sync = {
         itemsForModel.forEach(item => {
           const cIdx = model.colors.findIndex(c => c.id === item.colorId);
           if (cIdx !== -1) {
-            model.colors[cIdx].quantity = Math.max(0, model.colors[cIdx].quantity - item.quantity);
+            model.colors[cIdx].quantity = model.colors[cIdx].quantity - item.quantity;
           }
         });
         
         transaction.update(modelDocs[modelId].ref, { colors: model.colors, updatedAt: new Date().toISOString() });
       }
 
-      // 3. Save the order
+      // 4. Save the order
       transaction.set(orderRef, { ...order, updatedAt: new Date().toISOString() });
     });
   },
@@ -248,7 +267,7 @@ const Config = {
   },
   save(config) {
     DB.setOne(KEYS.CONFIG, config);
-    if (typeof Sync !== 'undefined' && typeof Sync.save === 'function') Sync.save(KEYS.CONFIG, config);
+    if (typeof Sync !== 'undefined' && typeof Sync.saveConfig === 'function') Sync.saveConfig(config);
     App.updateSeasonDisplay();
   }
 };
@@ -292,7 +311,7 @@ const Utils = {
   sanitize(str) {
     const d = document.createElement('div');
     d.textContent = str || '';
-    return d.innerHTML;
+    return d.innerHTML.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
   }
 };
 
@@ -485,12 +504,18 @@ const App = {
     Utils.hide('app-shell');
   },
 
+  _shellBound: false,
+
   showShell() {
     Utils.hide('screen-login');
     Utils.show('app-shell');
     this.renderHeader();
     this.renderNav();
-    this.bindShellEvents();
+    // Bind shell events only once to prevent duplicate listeners
+    if (!this._shellBound) {
+      this._shellBound = true;
+      this.bindShellEvents();
+    }
     this.applyRoleVisibility();
     this.updateSeasonDisplay();
   },
@@ -771,15 +796,15 @@ const Models = {
     const btnBulk = Utils.el('btn-bulk-add');
     if (btnBulk) btnBulk.onclick = () => Models.startBulkAdd();
 
-    // Search
+    // Search — pass full models array, renderGrid handles season filtering internally
     const searchInput = Utils.el('models-search');
     if (searchInput) {
       searchInput.oninput = () => this.renderGrid(models, searchInput.value);
     }
 
-    if (!seasonModels.length) { Utils.hide(grid); Utils.show(empty); countEl.textContent = ''; return; }
+    if (!seasonModels.length) { Utils.hide(grid); Utils.show(empty); if (countEl) countEl.textContent = ''; return; }
     Utils.show(grid); Utils.hide(empty);
-    countEl.textContent = `${seasonModels.length} موديل`;
+    if (countEl) countEl.textContent = `${seasonModels.length} موديل`;
     this.renderGrid(models, searchInput?.value || '');
   },
 
@@ -806,8 +831,8 @@ const Models = {
   },
 
   modelCardHTML(m) {
+    if (!m.colors || !Array.isArray(m.colors)) m.colors = [];
     const colorsHTML = m.colors.map(c => {
-      const pct    = m.colors.reduce((s,col)=>s+col.originalQty,0) ? (c.quantity / c.originalQty * 100) : 0;
       const cls    = c.quantity === 0 ? 'zero' : c.quantity < 6 ? 'low' : 'ok';
       const label  = c.quantity === 0 ? 'نفد' : c.quantity < 6 ? 'منخفض' : 'متوفر';
       return `
@@ -1136,7 +1161,6 @@ const Models = {
     if (addedCount > 0) {
       DB.set(KEYS.MODELS, models);
       // Sync each new model to Firebase
-      const season = Config.get().activeSeason;
       const allModels = DB.get(KEYS.MODELS);
       // Get the newly added models (last addedCount)
       allModels.slice(-addedCount).forEach(m => Sync.addOrUpdate(KEYS.MODELS, m.id, m));
@@ -1169,16 +1193,18 @@ const Orders = {
     const btnNewEmpty = Utils.el('btn-new-order-empty');
     if (btnNewEmpty) btnNewEmpty.onclick = () => App.navigate('create-order');
 
+    // Always show newest first
+    const reversed = [...orders].reverse();
     const searchInput = Utils.el('orders-search');
     if (searchInput) {
-      searchInput.oninput = () => this.renderList(orders, searchInput.value);
+      searchInput.oninput = () => this.renderList(reversed, searchInput.value);
     }
 
-    countEl.textContent = `${orders.length} أوردر`;
+    if (countEl) countEl.textContent = `${orders.length} أوردر`;
 
     if (!orders.length) { Utils.hide(listEl); Utils.show(emptyEl); return; }
     Utils.show(listEl); Utils.hide(emptyEl);
-    this.renderList([...orders].reverse(), '');
+    this.renderList(reversed, '');
   },
 
   renderList(orders, search = '') {
@@ -1312,6 +1338,12 @@ const Orders = {
     const address = Utils.el('customer-address').value.trim();
     if (!name)  { Toast.error('يرجى إدخال اسم التاجر'); return; }
     if (!phone) { Toast.error('يرجى إدخال رقم الموبايل'); return; }
+    // تحقق من صحة رقم الموبايل (مصري: 01x + 8 أرقام)
+    const phoneRegex = /^(010|011|012|015)\d{8}$/;
+    if (!phoneRegex.test(phone.replace(/\s|-/g, ''))) {
+      Toast.error('رقم الموبايل غير صحيح. مثال: 01012345678');
+      return;
+    }
     
     this.draft.customer = { name, address, phone };
 
@@ -1319,9 +1351,10 @@ const Orders = {
     const customers = DB.get(KEYS.CUSTOMERS);
     const existing = customers.find(c => c.name === name || c.phone === phone);
     if (!existing) {
-      customers.push({ id: Utils.id(), name, phone, address, createdAt: Utils.todayISO() });
+      const newCust = { id: Utils.id(), name, phone, address, createdAt: Utils.todayISO() };
+      customers.push(newCust);
       DB.set(KEYS.CUSTOMERS, customers);
-      if (typeof Sync !== 'undefined' && Sync.save) Sync.save(KEYS.CUSTOMERS, customers);
+      if (typeof Sync !== 'undefined' && Sync.addOrUpdate) Sync.addOrUpdate(KEYS.CUSTOMERS, newCust.id, newCust);
     } else {
       // Update address if it was empty
       let updated = false;
@@ -1329,7 +1362,7 @@ const Orders = {
       if (!existing.phone && phone) { existing.phone = phone; updated = true; }
       if (updated) {
         DB.set(KEYS.CUSTOMERS, customers);
-        if (typeof Sync !== 'undefined' && Sync.save) Sync.save(KEYS.CUSTOMERS, customers);
+        if (typeof Sync !== 'undefined' && Sync.addOrUpdate) Sync.addOrUpdate(KEYS.CUSTOMERS, existing.id, existing);
       }
     }
 
@@ -1822,9 +1855,14 @@ const Users = {
     Utils.el('user-password').value   = '';
     Utils.el('user-role').value       = user?.role || '';
 
+    // Restore password label correctly for both modes
     const passLabel = Utils.qs('label[for="user-password"]') ||
                       Utils.el('user-password')?.previousElementSibling;
-    if (isEdit && passLabel) passLabel.textContent = 'كلمة المرور (اتركها فارغة للإبقاء عليها)';
+    if (passLabel) {
+      passLabel.innerHTML = isEdit
+        ? 'كلمة المرور (اتركها فارغة للإبقاء عليها)'
+        : 'كلمة المرور <span class="req">*</span>';
+    }
 
     Modal.open('user');
   },
@@ -1885,7 +1923,7 @@ const Users = {
         const uid = userCredential.user.uid;
         
         await secondaryApp.auth().signOut();
-        secondaryApp.delete();
+        await secondaryApp.delete();
 
         const newUser = { id: uid, name, username, email, role, createdAt: Utils.todayISO() };
         users.push(newUser);
@@ -2070,7 +2108,9 @@ const Customers = {
     const grid = Utils.el('customers-grid');
     const countEl = Utils.el('customers-count-label');
 
-    countEl.textContent = `${customers.length} تاجر`;
+    // Guard: page-customers was removed from HTML, skip rendering
+    if (!grid) return;
+    if (countEl) countEl.textContent = `${customers.length} تاجر`;
 
     const searchInput = Utils.el('customers-search');
     if (searchInput) {

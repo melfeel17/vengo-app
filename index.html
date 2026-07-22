@@ -2,12 +2,12 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vengo - Fashion Kids</title>
   <meta name="description" content="نظام إدارة Vengo - Fashion Kids - إدارة الموديلات والأوردرات والمخزون">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=Cairo:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#3B82F6">
   <link rel="icon" href="icon.jpg" type="image/jpeg">
@@ -715,7 +715,7 @@
           <label>بدء موسم جديد (مثال: شتاء 2026)</label>
           <div style="display: flex; gap: 0.5rem;">
             <input type="text" id="new-season-input" placeholder="اسم الموسم الجديد..." style="flex: 1;">
-            <button class="btn btn-primary" onclick="Config.createNewSeason()">بدء الموسم</button>
+            <button class="btn btn-primary" onclick="Seasons.createNewSeason()">بدء الموسم</button>
           </div>
           <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem;">ملاحظة: بدء موسم جديد سيبدأ بصفر بيانات لتتمكن من العمل من جديد، وسيتم حفظ بياناتك القديمة في مواسمها.</p>
         </div>
