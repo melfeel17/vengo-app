@@ -4,22 +4,26 @@
 ═══════════════════════════════════════════════════════════════ */
 
 /* ─────────── GOOGLE FONTS & RESET ─────────── */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@300;400;500;600;700;800&family=Cairo:wght@400;600;700;800&family=Outfit:wght@400;500;600;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; scroll-behavior: smooth; }
 body {
-  font-family: 'Cairo', sans-serif;
+  font-family: 'Alexandria', 'Cairo', system-ui, -apple-system, sans-serif;
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
   direction: rtl;
   overflow-x: hidden;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 a { text-decoration: none; color: inherit; }
-button { font-family: 'Cairo', sans-serif; cursor: pointer; border: none; outline: none; }
-input, select, textarea { font-family: 'Cairo', sans-serif; outline: none; border: none; background: none; }
+button { font-family: 'Alexandria', 'Cairo', sans-serif; cursor: pointer; border: none; outline: none; }
+input, select, textarea { font-family: 'Alexandria', 'Cairo', sans-serif; outline: none; border: none; background: none; }
 svg { fill: currentColor; }
 img { max-width: 100%; }
 
@@ -419,7 +423,7 @@ img { max-width: 100%; }
   flex-direction: column;
   justify-content: space-between;
   overflow-y: auto;
-  z-index: 40;
+  z-index: 49;
   transform: translateX(0);
   transition: transform var(--transition-slow);
 }
@@ -1662,6 +1666,10 @@ img { max-width: 100%; }
     border-bottom: 1px solid #eee;
     text-align: right;
   }
+  .print-items-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   .print-items-table tbody tr:nth-child(even) td { background: #fafafa; }
   .print-items-table tfoot td {
     border-top: 2px solid var(--gold);
@@ -1756,12 +1764,20 @@ img { max-width: 100%; }
   .order-color-stock { display: none; }
 }
 
-/* Overlay for sidebar on mobile */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.5);
-  z-index: 39;
+  z-index: 48;
   display: none;
 }
 .sidebar-overlay.show { display: block; }
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE - SMALL MOBILE (< 480px)
+═══════════════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .page-title { font-size: 1.1rem; }
+  .form-card { padding: 0.75rem; }
+}

@@ -18,6 +18,7 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(STATIC_ASSETS))
+      .catch(err => console.error('Cache addAll failed:', err))
   );
 });
 
@@ -51,7 +52,16 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('/index.html')))
+        .catch(() => {
+          return caches.match(event.request).then(cached => {
+            if (cached) return cached;
+            // Only fallback to index.html for navigation requests
+            if (event.request.destination === 'document' || event.request.mode === 'navigate') {
+              return caches.match('/index.html');
+            }
+            return new Response('Network error and no cache available', { status: 503, statusText: 'Service Unavailable' });
+          });
+        })
     );
   } else {
     // Cache-First للصور والخطوط والوسائط (للسرعة)
@@ -64,6 +74,9 @@ self.addEventListener('fetch', event => {
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
           }
           return response;
+        }).catch(err => {
+          console.error('Fetch failed for image/font:', err);
+          return new Response('Resource unavailable', { status: 503, statusText: 'Service Unavailable' });
         });
       })
     );

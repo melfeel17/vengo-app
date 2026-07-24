@@ -111,7 +111,7 @@ const Sync = {
     };
     const fireCol = collections[key];
     if (fireCol) {
-      fireDB.collection(fireCol).doc(id).set({ ...data, updatedAt: new Date().toISOString() }, { merge: true })
+      return fireDB.collection(fireCol).doc(id).set({ ...data, updatedAt: new Date().toISOString() }, { merge: true })
         .catch(err => {
           console.error("Sync addOrUpdate Error:", err);
           // لا نعيد التحميل تلقائياً — نعرض رسالة واضحة للمستخدم
@@ -119,6 +119,7 @@ const Sync = {
           Toast.error(isPermission
             ? 'ليس لديك صلاحية لتنفيذ هذا الإجراء. تواصل مع المدير.'
             : 'فشل الحفظ في السحابة. تحقق من اتصالك بالإنترنت وأعد المحاولة.');
+          throw err;
         });
     }
   },
@@ -134,20 +135,22 @@ const Sync = {
     };
     const fireCol = collections[key];
     if (fireCol) {
-      fireDB.collection(fireCol).doc(id).delete()
+      return fireDB.collection(fireCol).doc(id).delete()
         .catch(err => {
           console.error("Sync delete Error:", err);
           const isPermission = err.code === 'permission-denied';
           Toast.error(isPermission
             ? 'ليس لديك صلاحية لحذف هذا العنصر. تواصل مع المدير.'
             : 'فشل الحذف من السحابة. تحقق من اتصالك بالإنترنت وأعد المحاولة.');
+          throw err;
         });
     }
   },
 
   saveConfig(data) {
     if (!fireDB) return;
-    fireDB.collection('vengo_config').doc('main').set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+    return fireDB.collection('vengo_config').doc('main').set({ ...data, updatedAt: new Date().toISOString() }, { merge: true })
+      .catch(err => console.error("Sync saveConfig Error:", err));
   },
 
   async confirmOrderTransaction(order, items) {
@@ -251,7 +254,12 @@ const Sync = {
 const DB = {
   get(key)       { try { return JSON.parse(localStorage.getItem(key)) || []; } catch { return []; } },
   set(key, val)  { 
-    localStorage.setItem(key, JSON.stringify(val)); 
+    try {
+      localStorage.setItem(key, JSON.stringify(val)); 
+    } catch (e) {
+      console.error("localStorage setItem Error:", e);
+      if (typeof Toast !== 'undefined') Toast.error("مساحة التخزين ممتلئة! يرجى مسح بعض البيانات.");
+    }
   },
   getOne(key)    { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } },
   setOne(key, v) { localStorage.setItem(key, JSON.stringify(v)); },
@@ -347,7 +355,6 @@ const Toast = {
 ───────────────────────────────────────────── */
 const Auth = {
   currentUser: null,
-  authUnsubscribe: null,
 
   init() {
     // Create default config if missing
@@ -444,9 +451,6 @@ const App = {
       Auth.currentUser = cachedUser;
       this.showShell();
       if (!this.currentPage) this.navigate(Auth.defaultPage());
-      if (typeof Sync !== 'undefined') {
-        Sync.init();
-      }
     }
 
     this.bindLoginForm();
@@ -792,7 +796,7 @@ const Dashboard = {
     } else {
       Utils.hide(emptyEl);
       listEl.innerHTML = recent.map(o => `
-        <div class="recent-order-item" onclick="Orders.showDetail('${o.id}')">
+        <div class="recent-order-item" data-action="order-detail" data-id="${o.id}">
           <div class="recent-order-left">
             <span class="recent-order-customer">${Utils.sanitize(o.customer.name)}</span>
             <span class="recent-order-meta">${Utils.sanitize(o.customer.phone || '')} | ${Utils.sanitize(o.customer.address || '')}</span>
@@ -885,13 +889,13 @@ const Models = {
             <div class="model-card-total">متبقي: ${totalLeft} / ${m.totalPieces} قطعة</div>
           </div>
           <div class="model-card-actions">
-            <button class="icon-btn-sm edit" title="تكرار" onclick="Models.duplicateModel('${m.id}')">
+            <button class="icon-btn-sm edit" title="تكرار" data-action="model-duplicate" data-id="${m.id}">
               <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
             </button>
-            <button class="icon-btn-sm edit" title="تعديل" onclick="Models.editModel('${m.id}')">
+            <button class="icon-btn-sm edit" title="تعديل" data-action="model-edit" data-id="${m.id}">
               <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
-            <button class="icon-btn-sm delete" title="حذف" onclick="Models.deleteModel('${m.id}')">
+            <button class="icon-btn-sm delete" title="حذف" data-action="model-delete" data-id="${m.id}">
               <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
@@ -1027,9 +1031,10 @@ const Models = {
     let valid = true;
     rows.forEach(row => {
       const name = row.querySelector('input[type="text"]')?.value.trim();
-      const code = row.querySelector('input[type="color"]')?.value;
+      const code = row.querySelector('input[type="color"]')?.value.trim();
       const qty  = parseInt(row.querySelector('input[type="number"]')?.value) || 0;
       if (!name) { Toast.error('يرجى إدخال اسم كل لون'); valid = false; return; }
+      if (!/^#([0-9A-Fa-f]{3}){1,2}$/.test(code)) { Toast.error('كود اللون غير صالح (يجب أن يكون بصيغة HEX)'); valid = false; return; }
       colors.push({ id: Utils.id(), name, code, quantity: qty, originalQty: qty });
     });
     if (!valid) return;
@@ -1042,8 +1047,8 @@ const Models = {
       if (idx !== -1) {
         const existing = models[idx];
         // Update colors but try to keep sold data
-        const updatedColors = colors.map((c, i) => {
-          const oldC = existing.colors[i];
+        const updatedColors = colors.map((c) => {
+          const oldC = existing.colors.find(ex => ex.name === c.name || ex.code === c.code);
           return { ...c, originalQty: c.quantity, id: oldC?.id || Utils.id() };
         });
         const updatedModel = { ...existing, name, price, totalPieces: total, colors: updatedColors };
@@ -1144,7 +1149,7 @@ const Models = {
       <td><input type="number" class="bulk-price" min="0" placeholder="السعر" style="width: 100%;"></td>
       <td><input type="number" class="bulk-total" min="1" placeholder="48" style="width: 100%;"></td>
       ${colors.map(c => `<td><input type="number" class="bulk-qty" data-hex="${c.hex}" data-cname="${c.name}" min="0" placeholder="0" style="width: 100%;"></td>`).join('')}
-      <td><button class="icon-btn-sm delete" onclick="this.closest('tr').remove()"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td>
+      <td><button class="icon-btn-sm delete" data-action="bulk-row-remove"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button></td>
     `;
     tbody.appendChild(tr);
   },
@@ -1254,7 +1259,7 @@ const Orders = {
     }
 
     listEl.innerHTML = filtered.map(o => `
-      <div class="order-item" onclick="Orders.showDetail('${o.id}')">
+      <div class="order-item" data-action="order-detail" data-id="${o.id}">
         <div class="order-item-left">
           <div class="order-item-num">${Utils.orderNum(o.id)}</div>
           <div class="order-item-name">${Utils.sanitize(o.customer?.name || 'بدون اسم')}</div>
@@ -1267,10 +1272,10 @@ const Orders = {
         <div class="order-item-right">
           <div class="order-item-qty">${o.totalPieces} قطعة</div>
           <div class="order-item-actions">
-            <button class="icon-btn-sm" title="طباعة" onclick="event.stopPropagation(); Orders.printOrder('${o.id}')">
+            <button class="icon-btn-sm" title="طباعة" data-action="order-print" data-id="${o.id}">
               <svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
             </button>
-            <button class="icon-btn-sm delete" title="حذف" onclick="event.stopPropagation(); Orders.deleteOrder('${o.id}')">
+            <button class="icon-btn-sm delete" title="حذف" data-action="order-delete" data-id="${o.id}">
               <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
@@ -1287,7 +1292,7 @@ const Orders = {
     this.goToStep(1);
 
     // Clear form fields
-    ['customer-name','customer-address','customer-phone'].forEach(id => {
+    ['customer-name','customer-address','customer-phone','customer-advance'].forEach(id => {
       const el = Utils.el(id); if (el) el.value = '';
     });
 
@@ -1375,8 +1380,10 @@ const Orders = {
       Toast.error('رقم الموبايل غير صحيح. مثال: 01012345678');
       return;
     }
+    const advance = parseFloat(Utils.el('customer-advance').value) || 0;
     
     this.draft.customer = { name, address, phone };
+    this.draft.advance = advance;
 
     // Auto-save customer
     const customers = DB.get(KEYS.CUSTOMERS);
@@ -1432,12 +1439,18 @@ const Orders = {
           <span class="order-color-name">${Utils.sanitize(c.name)}</span>
           <span class="order-color-stock ${stockClass}">متبقي: ${c.quantity}</span>
           <div class="order-qty-ctrl">
-            <button class="qty-btn" onclick="Orders.changeQty('${m.id}','${c.id}',-1)">−</button>
+            <button class="qty-btn" data-action="qty-minus" data-model="${m.id}" data-color="${c.id}">−</button>
             <input class="qty-input" type="number" min="0" max="${c.quantity}"
               value="${qty}"
               id="qty-${m.id}-${c.id}"
-              onchange="Orders.setQty('${m.id}','${c.id}',this.value,'${Utils.sanitize(m.name)}','${Utils.sanitize(c.name)}','${c.code}',${c.quantity},${m.price || 0})">
-            <button class="qty-btn" onclick="Orders.changeQty('${m.id}','${c.id}',1)">+</button>
+              data-model="${m.id}"
+              data-color="${c.id}"
+              data-mname="${Utils.sanitize(m.name)}"
+              data-cname="${Utils.sanitize(c.name)}"
+              data-ccode="${c.code}"
+              data-cqty="${c.quantity}"
+              data-mprice="${m.price || 0}">
+            <button class="qty-btn" data-action="qty-plus" data-model="${m.id}" data-color="${c.id}">+</button>
           </div>
         </div>`;
     }).join('');
@@ -1445,7 +1458,7 @@ const Orders = {
     const inBasket = this.draft.items.filter(i => i.modelId === m.id).reduce((s,i) => s + i.quantity, 0);
     return `
       <div class="order-model-card ${inBasket ? 'expanded' : ''}" id="omc-${m.id}">
-        <div class="order-model-header" onclick="Orders.toggleModelCard('${m.id}')">
+        <div class="order-model-header" data-action="model-toggle" data-id="${m.id}">
           <div>
             <div class="order-model-name">${Utils.sanitize(m.name)}</div>
             <div class="order-model-stock">متبقي: ${m.colors.reduce((s,c)=>s+c.quantity,0)} قطعة${inBasket ? ` | في السلة: ${inBasket}` : ''}</div>
@@ -1551,10 +1564,21 @@ const Orders = {
     // Totals
     const totalPieces = this.draft.items.reduce((s,i) => s + i.quantity, 0);
     const totalPrice = this.draft.items.reduce((s,i) => s + (i.quantity * (i.price || 0)), 0);
-    Utils.el('review-totals').innerHTML = `
-      <div class="review-total-item"><span class="review-total-value">${totalPrice}</span><span class="review-total-label">إجمالي السعر (ج)</span></div>
+    const advance = this.draft.advance || 0;
+    const remaining = totalPrice - advance;
+
+    let totalsHTML = `
+      <div class="review-total-item"><span class="review-total-value">${totalPrice}</span><span class="review-total-label">المبلغ الكلي (ج)</span></div>
       <div class="review-total-item"><span class="review-total-value">${totalPieces}</span><span class="review-total-label">إجمالي القطع</span></div>
       <div class="review-total-item"><span class="review-total-value">${this.draft.items.length}</span><span class="review-total-label">أصناف</span></div>`;
+    
+    if (advance > 0) {
+      totalsHTML += `
+      <div class="review-total-item" style="color: var(--green)"><span class="review-total-value">${advance}</span><span class="review-total-label">العربون المدفوع (ج)</span></div>
+      <div class="review-total-item" style="color: var(--red)"><span class="review-total-value">${remaining}</span><span class="review-total-label">المتبقي (ج)</span></div>`;
+    }
+
+    Utils.el('review-totals').innerHTML = totalsHTML;
   },
 
   async confirmOrder() {
@@ -1571,6 +1595,7 @@ const Orders = {
       items:       this.draft.items,
       totalPieces,
       totalPrice,
+      advance:     this.draft.advance || 0,
       staff:       Auth.currentUser?.name || 'غير محدد'
     };
 
@@ -1653,7 +1678,34 @@ const Orders = {
     }).join('');
 
     Utils.el('print-total-pieces').textContent = totalPieces;
-    Utils.el('print-total-price').textContent = totalPrice + ' ج.م';
+    Utils.el('print-total-price').textContent = totalPrice + ' ج';
+
+    const tfoot = Utils.el('print-tfoot');
+    const advance = order.advance || 0;
+    
+    // Clear previously injected rows if any
+    const extraRows = tfoot.querySelectorAll('.advance-row');
+    extraRows.forEach(r => r.remove());
+
+    if (advance > 0) {
+      const remaining = totalPrice - advance;
+      const advanceRow = document.createElement('tr');
+      advanceRow.className = 'print-total-row advance-row';
+      advanceRow.innerHTML = `
+        <td colspan="4"></td>
+        <td><strong>العربون المدفوع</strong></td>
+        <td><strong>${advance} ج</strong></td>
+      `;
+      const remainingRow = document.createElement('tr');
+      remainingRow.className = 'print-total-row advance-row';
+      remainingRow.innerHTML = `
+        <td colspan="4"></td>
+        <td><strong>المتبقي</strong></td>
+        <td><strong>${remaining} ج</strong></td>
+      `;
+      tfoot.appendChild(advanceRow);
+      tfoot.appendChild(remainingRow);
+    }
 
     window.print();
   },
@@ -1811,7 +1863,13 @@ const Inventory = {
       m.colors.forEach(c => {
         const orig = c.originalQty || c.quantity;
         const sold = orig - c.quantity;
-        csv += `"${m.name}","${c.name}",${orig},${sold},${c.quantity}\n`;
+        let mName = m.name || '';
+        let cName = c.name || '';
+        if (/^[=\-+\@]/.test(mName)) mName = "'" + mName;
+        if (/^[=\-+\@]/.test(cName)) cName = "'" + cName;
+        const escName = mName.replace(/"/g, '""');
+        const escColor = cName.replace(/"/g, '""');
+        csv += `"${escName}","${escColor}",${orig},${sold},${c.quantity}\n`;
       });
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1863,10 +1921,10 @@ const Users = {
           <div style="display:flex;align-items:center;gap:.5rem">
             ${isSelf ? '<span class="user-self-badge">أنت</span>' : ''}
             <div class="user-card-actions">
-              <button class="icon-btn-sm edit" title="تعديل" onclick="Users.openUserModal('${u.id}')">
+              <button class="icon-btn-sm edit" title="تعديل" data-action="user-edit" data-id="${u.id}">
                 <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
               </button>
-              ${!isSelf ? `<button class="icon-btn-sm delete" title="حذف" onclick="Users.deleteUser('${u.id}')">
+              ${!isSelf ? `<button class="icon-btn-sm delete" title="حذف" data-action="user-delete" data-id="${u.id}">
                 <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>` : ''}
             </div>
@@ -1882,7 +1940,9 @@ const Users = {
     Utils.el('user-modal-title').textContent = isEdit ? 'تعديل مستخدم' : 'إضافة مستخدم جديد';
     Utils.el('user-edit-id').value    = userId || '';
     Utils.el('user-fullname').value   = user?.name || '';
-    Utils.el('user-username').value   = user?.username || '';
+    const usernameInput = Utils.el('user-username');
+    usernameInput.value = user?.username || '';
+    usernameInput.disabled = isEdit;
     Utils.el('user-password').value   = '';
     Utils.el('user-role').value       = user?.role || '';
 
@@ -2024,7 +2084,7 @@ const Colors = {
         <div class="empty-icon">🎨</div>
         <h3>لا توجد ألوان</h3>
         <p>أضف الألوان التي تستخدمها في التصنيع</p>
-        <button class="btn btn-primary" style="margin-top: 1rem;" onclick="Colors.restoreDefaults()">
+        <button class="btn btn-primary" style="margin-top: 1rem;" data-action="color-restore">
           استعادة الألوان الأساسية
         </button>
       </div>`;
@@ -2037,13 +2097,13 @@ const Colors = {
           <div style="display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <div style="width:24px; height:24px; border-radius:50%; background:${c.hex}; border:1px solid #ddd;"></div>
-              <h3 class="user-name">${c.name}</h3>
+              <h3 class="user-name">${Utils.sanitize(c.name)}</h3>
             </div>
             <div class="user-card-actions">
-              <button class="icon-btn-sm edit" title="تعديل" onclick="Colors.openModal('${c.id}')">
+              <button class="icon-btn-sm edit" title="تعديل" data-action="color-edit" data-id="${c.id}">
                 <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
               </button>
-              <button class="icon-btn-sm delete" title="حذف" onclick="Colors.deleteColor('${c.id}')">
+              <button class="icon-btn-sm delete" title="حذف" data-action="color-delete" data-id="${c.id}">
                 <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>
             </div>
@@ -2067,9 +2127,10 @@ const Colors = {
   saveColor() {
     const id = Utils.el('color-id').value;
     const name = Utils.el('color-name').value.trim();
-    const hex = Utils.el('color-hex').value;
+    const hex = Utils.el('color-hex').value.trim();
 
     if (!name) { Toast.error('يرجى إدخال اسم اللون'); return; }
+    if (!/^#([0-9A-Fa-f]{3}){1,2}$/.test(hex)) { Toast.error('صيغة اللون غير صحيحة، يجب أن تكون HEX مثل #FFFFFF'); return; }
 
     const colors = DB.get(KEYS.COLORS);
     const duplicate = colors.find(c => c.name === name && c.id !== id);
@@ -2130,10 +2191,14 @@ const Colors = {
     
     Toast.info('جاري استعادة الألوان... برجاء الانتظار');
     try {
+      const colorsWithIds = [];
       for (const dc of defaultColors) {
         const id = Utils.id();
-        await Sync.addOrUpdate(KEYS.COLORS, id, { ...dc, id, createdAt: Utils.todayISO() });
+        const fullColor = { ...dc, id, createdAt: Utils.todayISO() };
+        colorsWithIds.push(fullColor);
+        await Sync.addOrUpdate(KEYS.COLORS, id, fullColor);
       }
+      DB.set(KEYS.COLORS, [...DB.get(KEYS.COLORS), ...colorsWithIds]);
       Toast.success('تمت استعادة الألوان الأساسية بنجاح!');
     } catch(err) {
       console.error(err);
@@ -2166,6 +2231,7 @@ const Customers = {
   renderList(customers, search = '') {
     const grid = Utils.el('customers-grid');
     const emptyEl = Utils.el('customers-empty');
+    if (!grid || !emptyEl) return;
 
     const filtered = search
       ? customers.filter(c => 
@@ -2195,10 +2261,10 @@ const Customers = {
         <div class="user-card-bottom">
           <span class="role-badge" style="color:var(--text-dim); background:var(--bg-elevated); border:none;">${Utils.sanitize(c.address || 'بدون عنوان')}</span>
           <div class="user-card-actions">
-            <button class="icon-btn-sm edit" title="تعديل" onclick="Customers.openModal('${c.id}')">
+            <button class="icon-btn-sm edit" title="تعديل" data-action="customer-edit" data-id="${c.id}">
               <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
             </button>
-            <button class="icon-btn-sm delete" title="حذف" onclick="Customers.deleteCustomer('${c.id}')">
+            <button class="icon-btn-sm delete" title="حذف" data-action="customer-delete" data-id="${c.id}">
               <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
@@ -2281,8 +2347,8 @@ const Seasons = {
         </div>
         <div class="user-card-bottom" style="justify-content: flex-end;">
           <div class="user-card-actions">
-            <button class="btn btn-outline btn-sm" ${isActive ? 'disabled' : ''} onclick="Seasons.switchSeason('${Utils.sanitize(s).replace(/'/g, "\\'")}')">تنشيط وعرض</button>
-            <button class="icon-btn-sm delete" title="حذف بالكامل" onclick="Seasons.deleteSeason('${Utils.sanitize(s).replace(/'/g, "\\'")}')" ${config.seasons.length === 1 ? 'disabled' : ''}>
+            <button class="btn btn-outline btn-sm" ${isActive ? 'disabled' : ''} data-action="season-switch" data-name="${Utils.sanitize(s)}">تنشيط وعرض</button>
+            <button class="icon-btn-sm delete" title="حذف بالكامل" data-action="season-delete" data-name="${Utils.sanitize(s)}" ${config.seasons.length === 1 ? 'disabled' : ''}>
               <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
@@ -2362,7 +2428,42 @@ const Seasons = {
 
 
 /* ─────────────────────────────────────────────
+   GLOBAL EVENT DELEGATION
+───────────────────────────────────────────── */
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  
+  const action = btn.dataset.action;
+  if (action === 'order-detail') Orders.showDetail(btn.dataset.id);
+  else if (action === 'order-print') { e.stopPropagation(); Orders.printOrder(btn.dataset.id); }
+  else if (action === 'order-delete') { e.stopPropagation(); Orders.deleteOrder(btn.dataset.id); }
+  else if (action === 'model-duplicate') Models.duplicateModel(btn.dataset.id);
+  else if (action === 'model-edit') Models.editModel(btn.dataset.id);
+  else if (action === 'model-delete') Models.deleteModel(btn.dataset.id);
+  else if (action === 'model-toggle') Orders.toggleModelCard(btn.dataset.id);
+  else if (action === 'bulk-row-remove') btn.closest('tr').remove();
+  else if (action === 'qty-minus') Orders.changeQty(btn.dataset.model, btn.dataset.color, -1);
+  else if (action === 'qty-plus') Orders.changeQty(btn.dataset.model, btn.dataset.color, 1);
+  else if (action === 'user-edit') Users.openUserModal(btn.dataset.id);
+  else if (action === 'user-delete') Users.deleteUser(btn.dataset.id);
+  else if (action === 'color-restore') Colors.restoreDefaults();
+  else if (action === 'color-edit') Colors.openModal(btn.dataset.id);
+  else if (action === 'color-delete') Colors.deleteColor(btn.dataset.id);
+  else if (action === 'customer-edit') Customers.openModal(btn.dataset.id);
+  else if (action === 'customer-delete') Customers.deleteCustomer(btn.dataset.id);
+  else if (action === 'season-switch') Seasons.switchSeason(btn.dataset.name);
+  else if (action === 'season-delete') Seasons.deleteSeason(btn.dataset.name);
+});
+
+document.addEventListener('change', (e) => {
+  if (e.target.matches('.qty-input')) {
+    const inp = e.target;
+    Orders.setQty(inp.dataset.model, inp.dataset.color, inp.value, inp.dataset.mname, inp.dataset.cname, inp.dataset.ccode, parseInt(inp.dataset.cqty), parseFloat(inp.dataset.mprice));
+  }
+});
+
+/* ─────────────────────────────────────────────
    INIT APP ON DOM READY
 ───────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => App.init());
-

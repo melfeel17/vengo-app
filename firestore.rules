@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // دالة لجلب صلاحية المستخدم الحالي من قاعدة البيانات
+    function getRole() {
+      return get(/databases/$(database)/documents/vengo_users/$(request.auth.uid)).data.role;
+    }
+    
+    // التحقق من تسجيل الدخول
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // التحقق من الصلاحيات
+    function isAdmin() {
+      return isAuthenticated() && getRole() == 'admin';
+    }
+    function isSales() {
+      return isAuthenticated() && getRole() == 'sales';
+    }
+    function isWarehouse() {
+      return isAuthenticated() && getRole() == 'warehouse';
+    }
+
+    // 1. المستخدمين: الجميع يمكنه القراءة (لعرض الأسماء)، فقط المدير يمكنه الإضافة/التعديل/الحذف
+    match /vengo_users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 2. الإعدادات (المواسم): الجميع يقرأ، المدير فقط يكتب
+    match /vengo_config/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 3. الألوان: الجميع يقرأ، المدير فقط يكتب
+    match /vengo_colors/{colorId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 4. التجار (العملاء): السيلز والمدير يكتبون، الجميع يقرأ
+    match /vengo_customers/{customerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isSales();
+    }
+
+    // 5. الموديلات: السيلز والمدير يكتبون (لأن السيلز يخصم كمية عند الطلب)، المخزن يقرأ
+    match /vengo_models/{modelId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isSales();
+    }
+
+    // 6. الأوردرات: السيلز والمدير يكتبون، الجميع يقرأ
+    match /vengo_orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isSales();
+    }
+    
+    // منع أي وصول لأي مجموعات أخرى غير محددة أعلاه
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
