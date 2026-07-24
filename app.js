@@ -1625,7 +1625,11 @@ const Orders = {
       }
     } catch (err) {
       console.error(err);
-      Toast.error('حدث خطأ أثناء تأكيد الأوردر. قد يكون السبب مشكلة في الاتصال بالإنترنت.');
+      let errMsg = 'حدث خطأ أثناء تأكيد الأوردر. قد يكون السبب مشكلة في الاتصال بالإنترنت.';
+      if (err.message && !err.message.includes('internet') && !err.message.includes('offline') && !err.message.includes('network') && !err.message.includes('fetch')) {
+         errMsg = err.message;
+      }
+      Toast.error(errMsg);
       btn.innerHTML = origText;
       btn.disabled = false;
       return;
@@ -1773,7 +1777,11 @@ const Orders = {
           this.render();
         } catch (err) {
           console.error(err);
-          Toast.error('حدث خطأ أثناء حذف الأوردر');
+          let errMsg = 'حدث خطأ أثناء حذف الأوردر';
+          if (err.message && !err.message.includes('internet') && !err.message.includes('offline') && !err.message.includes('network') && !err.message.includes('fetch')) {
+             errMsg = err.message;
+          }
+          Toast.error(errMsg);
         }
       }
     );
