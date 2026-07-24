@@ -589,8 +589,9 @@ const App = {
         btn.textContent = 'تسجيل الدخول';
         btn.disabled = false;
       } catch (err) {
+        console.error("Login Error:", err);
         Utils.show(errEl);
-        errEl.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة';
+        errEl.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة. (' + (err.message || '') + ')';
         btn.textContent = 'تسجيل الدخول';
         btn.disabled = false;
         passInput.value = '';
