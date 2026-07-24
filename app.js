@@ -1050,7 +1050,11 @@ const Models = {
         // Update colors but try to keep sold data
         const updatedColors = colors.map((c) => {
           const oldC = existing.colors.find(ex => ex.name === c.name || ex.code === c.code);
-          return { ...c, originalQty: c.quantity, id: oldC?.id || Utils.id() };
+          if (oldC) {
+            const diff = c.quantity - oldC.quantity;
+            return { ...c, originalQty: (oldC.originalQty || oldC.quantity) + diff, id: oldC.id };
+          }
+          return { ...c, originalQty: c.quantity, id: Utils.id() };
         });
         const updatedModel = { ...existing, name, price, totalPieces: total, colors: updatedColors };
         models[idx] = updatedModel;
