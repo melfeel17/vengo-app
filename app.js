@@ -2002,7 +2002,7 @@ const Users = {
             Auth.currentUser = users[idx];
             App.renderHeader();
           }
-          await Sync.addOrUpdate(KEYS.USERS, editId, users[idx]);
+          Sync.addOrUpdate(KEYS.USERS, editId, users[idx]);
           Toast.success('تم تحديث المستخدم بنجاح');
         }
       } else {
@@ -2021,7 +2021,7 @@ const Users = {
 
           const newUser = { id: uid, uid: uid, name, username, email, role, createdAt: Utils.todayISO() };
           users.push(newUser);
-          await Sync.addOrUpdate(KEYS.USERS, uid, newUser);
+          Sync.addOrUpdate(KEYS.USERS, uid, newUser);
           Toast.success('تم إضافة المستخدم بنجاح');
         } finally {
           await secondaryApp.delete().catch(() => {});
